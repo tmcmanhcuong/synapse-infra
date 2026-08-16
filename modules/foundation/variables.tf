@@ -40,9 +40,14 @@ variable "environment" {
 }
 
 variable "flow_log_retention_days" {
-  description = "CloudWatch Logs retention in days for VPC Flow Logs"
+  description = "CloudWatch Logs retention in days for VPC Flow Logs (minimum 365 for production compliance)"
   type        = number
-  default     = 90
+  default     = 365
+
+  validation {
+    condition     = var.flow_log_retention_days >= 365
+    error_message = "Flow log retention must be at least 365 days for production compliance."
+  }
 }
 
 variable "project" {

@@ -1,0 +1,208 @@
+name: Terraform CI
+
+on:
+  pull_request:
+    paths:
+      - "environments/**"
+      - "modules/**"
+      - ".github/workflows/terraform-*.yml"
+      - ".github/actions/**"
+
+permissions:
+  id-token: write
+  contents: read
+  pull-requests: write
+  issues: write
+
+concurrency:
+  group: terraform-plan-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  plan:
+    name: Validate & Plan
+    runs-on: ubuntu-latest
+    env:
+      TF_VERSION: "1.9.8"
+      TF_IN_AUTOMATION: "true"
+      TF_INPUT: "false"
+      TF_WORKING_DIR: environments/prod
+      AWS_REGION: ${{ secrets.AWS_REGION }}
+      TF_STATE_BUCKET: ${{ secrets.TF_STATE_BUCKET }}
+      TF_BACKEND_REGION: ${{ secrets.TF_BACKEND_REGION || secrets.AWS_REGION }}
+      INFRACOST_API_KEY: ${{ secrets.INFRACOST_API_KEY }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_TERRAFORM_PLAN_ROLE_ARN }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Setup Terraform
+        uses: ./.github/actions/setup-terraform-cached
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+          terraform_wrapper: "false"
+
+      # ---------- Static Analysis ----------
+
+      - name: Terraform fmt
+        run: terraform fmt -check -recursive
+
+      - name: Terraform init
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        shell: bash
+        run: |
+          args=(-lock-timeout=5m)
+          [ -n "$TF_STATE_BUCKET" ] && args+=("-backend-config=bucket=$TF_STATE_BUCKET")
+          [ -n "$TF_BACKEND_REGION" ] && args+=("-backend-config=region=$TF_BACKEND_REGION")
+          terraform init "${args[@]}"
+
+      - name: Terraform validate
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        run: terraform validate
+
+      # ---------- Linting ----------
+
+      - name: Setup TFLint
+        uses: terraform-linters/setup-tflint@v4
+
+      - name: TFLint init
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        run: tflint --init
+
+      - name: TFLint
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        run: tflint --recursive
+
+      # ---------- Terraform Tests ----------
+
+      - name: Terraform test
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        run: |
+          if compgen -G "*.tftest.hcl" > /dev/null || compgen -G "tests/*.tftest.hcl" > /dev/null; then
+            terraform test
+          else
+            echo "No test files found, skipping."
+          fi
+
+      # ---------- Security Scanning ----------
+
+      - name: Checkov
+        uses: bridgecrewio/checkov-action@v12
+        with:
+          directory: ${{ env.TF_WORKING_DIR }}
+          framework: terraform
+          quiet: true
+          soft_fail: false
+          config_file: ${{ env.TF_WORKING_DIR }}/.checkov.yml
+
+      # ---------- Plan ----------
+
+      - name: Terraform plan
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        run: terraform plan -lock-timeout=5m -out=tfplan
+
+      - name: Export plan JSON and checksum
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        run: |
+          terraform show -json tfplan > tfplan.json
+          sha256sum tfplan > tfplan.sha256
+
+      # ---------- Cost Estimation ----------
+
+      - name: Setup Infracost
+        if: env.INFRACOST_API_KEY != ''
+        uses: infracost/actions/setup@v3
+        with:
+          api-key: ${{ secrets.INFRACOST_API_KEY }}
+
+      - name: Generate current branch cost
+        if: env.INFRACOST_API_KEY != ''
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        env:
+          INFRACOST_CURRENCY: USD
+        run: infracost breakdown --path tfplan.json --format json --out-file infracost.json
+
+      - name: Checkout base branch for cost diff
+        if: env.INFRACOST_API_KEY != ''
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.base_ref }}
+          path: base
+
+      - name: Generate base branch cost
+        if: env.INFRACOST_API_KEY != ''
+        working-directory: base/${{ env.TF_WORKING_DIR }}
+        run: |
+          terraform init -backend=false -input=false
+          infracost breakdown --path . --format json --out-file /tmp/infracost-base.json
+        env:
+          INFRACOST_CURRENCY: USD
+
+      - name: Generate cost diff
+        if: env.INFRACOST_API_KEY != ''
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        env:
+          INFRACOST_CURRENCY: USD
+        run: |
+          infracost diff --path tfplan.json \
+            --compare-to /tmp/infracost-base.json \
+            --format json --out-file infracost-diff.json
+
+      - name: Post Infracost comment
+        if: env.INFRACOST_API_KEY != ''
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        run: |
+          infracost comment github \
+            --path infracost-diff.json \
+            --repo "$GITHUB_REPOSITORY" \
+            --pull-request "${{ github.event.pull_request.number }}" \
+            --github-token "${{ github.token }}" \
+            --behavior update
+
+      # ---------- Artifacts ----------
+
+      - name: Upload plan artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: terraform-plan-${{ github.event.pull_request.number }}
+          path: |
+            ${{ env.TF_WORKING_DIR }}/tfplan
+            ${{ env.TF_WORKING_DIR }}/tfplan.json
+            ${{ env.TF_WORKING_DIR }}/tfplan.sha256
+            ${{ env.TF_WORKING_DIR }}/infracost.json
+            ${{ env.TF_WORKING_DIR }}/infracost-diff.json
+          retention-days: 7
+
+      - name: Comment plan summary
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const body = [
+              "## Terraform Plan - Production",
+              "",
+              "✅ Plan completed and artifacts uploaded.",
+              "",
+              "| Check | Status |",
+              "|-------|--------|",
+              "| `terraform fmt` | ✅ |",
+              "| `terraform validate` | ✅ |",
+              "| TFLint | ✅ |",
+              "| Checkov | ✅ |",
+              "| `terraform plan` | ✅ |",
+              "",
+              "- Working directory: `${{ env.TF_WORKING_DIR }}`",
+              "- Run: `${{ github.run_id }}`",
+              "",
+              "Review the workflow logs and `tfplan.json` artifact before approving apply."
+            ].join("\n");
+            github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body
+            });

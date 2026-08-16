@@ -2,6 +2,9 @@
 # Foundation Module — VPC, Subnets, NAT Gateways, Route Tables, Security Groups
 # -----------------------------------------------------------------------------
 
+data "aws_caller_identity" "current" {}
+data "aws_region" "current" {}
+
 # -----------------------------------------------------------------------------
 # VPC
 # -----------------------------------------------------------------------------
@@ -13,6 +16,16 @@ resource "aws_vpc" "main" {
 
   tags = {
     Name = "${var.project}-${var.environment}-vpc"
+  }
+}
+
+# Restrict default security group — no ingress/egress allowed
+# CKV2_AWS_12: Ensure the default security group of every VPC restricts all traffic
+resource "aws_default_security_group" "default" {
+  vpc_id = aws_vpc.main.id
+
+  tags = {
+    Name = "${var.project}-${var.environment}-default-sg-restricted"
   }
 }
 
@@ -32,6 +45,7 @@ resource "aws_internet_gateway" "main" {
 # Subnets — Public (2 AZ)
 # -----------------------------------------------------------------------------
 
+# Public subnets intentionally assign public IPs for ALB and NAT Gateway placement
 resource "aws_subnet" "public" {
   count = length(var.availability_zones)
 
@@ -176,6 +190,7 @@ resource "aws_route_table_association" "data" {
 # Security Groups
 # -----------------------------------------------------------------------------
 
+# Security groups are defined in foundation and attached by compute/edge modules
 resource "aws_security_group" "web" {
   name_prefix = "${var.project}-${var.environment}-web-"
   description = "Web tier - allows HTTP/HTTPS from allowed CIDRs"
@@ -191,6 +206,7 @@ resource "aws_security_group" "web" {
   }
 }
 
+# Web tier intentionally allows HTTP from public for ALB HTTP→HTTPS redirect
 resource "aws_vpc_security_group_ingress_rule" "web_http" {
   for_each = toset(var.allowed_web_cidrs)
 
@@ -286,9 +302,60 @@ resource "aws_vpc_security_group_egress_rule" "data_all" {
 # VPC Flow Logs
 # -----------------------------------------------------------------------------
 
+resource "aws_kms_key" "flow_logs" {
+  description             = "KMS key for VPC Flow Logs CloudWatch Log Group"
+  deletion_window_in_days = 30
+  enable_key_rotation     = true
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid    = "EnableRootAccount"
+        Effect = "Allow"
+        Principal = {
+          AWS = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:root"
+        }
+        Action   = "kms:*"
+        Resource = "*"
+      },
+      {
+        Sid    = "AllowCloudWatchLogs"
+        Effect = "Allow"
+        Principal = {
+          Service = "logs.${data.aws_region.current.name}.amazonaws.com"
+        }
+        Action = [
+          "kms:Encrypt*",
+          "kms:Decrypt*",
+          "kms:ReEncrypt*",
+          "kms:GenerateDataKey*",
+          "kms:Describe*",
+        ]
+        Resource = "*"
+        Condition = {
+          ArnLike = {
+            "kms:EncryptionContext:aws:logs:arn" = "arn:aws:logs:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:log-group:/vpc/${var.project}-${var.environment}/*"
+          }
+        }
+      }
+    ]
+  })
+
+  tags = {
+    Name = "${var.project}-${var.environment}-flow-logs-kms"
+  }
+}
+
+resource "aws_kms_alias" "flow_logs" {
+  name          = "alias/${var.project}-${var.environment}-flow-logs"
+  target_key_id = aws_kms_key.flow_logs.key_id
+}
+
 resource "aws_cloudwatch_log_group" "flow_logs" {
   name              = "/vpc/${var.project}-${var.environment}/flow-logs"
   retention_in_days = var.flow_log_retention_days
+  kms_key_id        = aws_kms_key.flow_logs.arn
 
   tags = {
     Name = "${var.project}-${var.environment}-vpc-flow-logs"
