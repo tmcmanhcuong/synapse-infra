@@ -116,18 +116,48 @@ jobs:
       - name: Setup Infracost
         if: env.INFRACOST_API_KEY != ''
         uses: infracost/actions/setup@v3
+        with:
+          api-key: ${{ secrets.INFRACOST_API_KEY }}
 
-      - name: Infracost breakdown
+      - name: Generate current branch cost
         if: env.INFRACOST_API_KEY != ''
         working-directory: ${{ env.TF_WORKING_DIR }}
+        env:
+          INFRACOST_CURRENCY: USD
         run: infracost breakdown --path tfplan.json --format json --out-file infracost.json
 
-      - name: Infracost comment
+      - name: Checkout base branch for cost diff
+        if: env.INFRACOST_API_KEY != ''
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.base_ref }}
+          path: base
+
+      - name: Generate base branch cost
+        if: env.INFRACOST_API_KEY != ''
+        working-directory: base/${{ env.TF_WORKING_DIR }}
+        run: |
+          terraform init -backend=false -input=false
+          infracost breakdown --path . --format json --out-file /tmp/infracost-base.json
+        env:
+          INFRACOST_CURRENCY: USD
+
+      - name: Generate cost diff
+        if: env.INFRACOST_API_KEY != ''
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        env:
+          INFRACOST_CURRENCY: USD
+        run: |
+          infracost diff --path tfplan.json \
+            --compare-to /tmp/infracost-base.json \
+            --format json --out-file infracost-diff.json
+
+      - name: Post Infracost comment
         if: env.INFRACOST_API_KEY != ''
         working-directory: ${{ env.TF_WORKING_DIR }}
         run: |
           infracost comment github \
-            --path infracost.json \
+            --path infracost-diff.json \
             --repo "$GITHUB_REPOSITORY" \
             --pull-request "${{ github.event.pull_request.number }}" \
             --github-token "${{ github.token }}" \
@@ -144,6 +174,7 @@ jobs:
             ${{ env.TF_WORKING_DIR }}/tfplan.json
             ${{ env.TF_WORKING_DIR }}/tfplan.sha256
             ${{ env.TF_WORKING_DIR }}/infracost.json
+            ${{ env.TF_WORKING_DIR }}/infracost-diff.json
           retention-days: 7
 
       - name: Comment plan summary

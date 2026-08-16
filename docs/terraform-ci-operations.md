@@ -43,7 +43,7 @@
 | Secret | Value | Required |
 |--------|-------|----------|
 | `AWS_TERRAFORM_PLAN_ROLE_ARN` | ARN of the OIDC plan role | Yes |
-| `AWS_REGION` | `ap-southeast-1` | Yes |
+| `AWS_REGION` | `us-east-1` | Yes |
 | `TF_STATE_BUCKET` | S3 bucket name for state | Yes |
 | `TF_BACKEND_REGION` | Region of state bucket (if different from AWS_REGION) | No |
 | `INFRACOST_API_KEY` | Infracost API key | Optional |
@@ -53,9 +53,6 @@
 | Secret | Value | Required |
 |--------|-------|----------|
 | `AWS_TERRAFORM_APPLY_ROLE_ARN` | ARN of the OIDC apply role | Yes |
-| `AWS_REGION` | `ap-southeast-1` | Yes |
-| `TF_STATE_BUCKET` | Same state bucket | Yes |
-
 ---
 
 ## AWS Setup Commands
@@ -66,7 +63,8 @@
 aws iam create-open-id-connect-provider \
   --url https://token.actions.githubusercontent.com \
   --thumbprint-list "6938fd4d98bab03faadb97b34396831e3780aea1" \
-  --client-id-list sts.amazonaws.com
+  --client-id-list sts.amazonaws.com \
+  --profile cuong-admin
 ```
 
 ### 2. Create Plan Role
@@ -101,11 +99,12 @@ JSON
 
 aws iam create-role \
   --role-name synapse-github-actions-plan \
-  --assume-role-policy-document file://github-actions-plan-trust.json
+  --profile cuong-admin
 
 aws iam attach-role-policy \
   --role-name synapse-github-actions-plan \
-  --policy-arn arn:aws:iam::aws:policy/ReadOnlyAccess
+  --policy-arn arn:aws:iam::aws:policy/ReadOnlyAccess \
+  --profile cuong-admin
 ```
 
 ### 3. Create Apply Role
@@ -137,43 +136,69 @@ JSON
 
 aws iam create-role \
   --role-name synapse-github-actions-apply \
-  --assume-role-policy-document file://github-actions-apply-trust.json
+  --assume-role-policy-document '{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "GitHubActionsOIDC",
+      "Effect": "Allow",
+      "Principal": {
+        "Federated": "arn:aws:iam::ACCOUNT_ID:oidc-provider/token.actions.githubusercontent.com"
+      },
+      "Action": "sts:AssumeRoleWithWebIdentity",
+      "Condition": {
+        "StringEquals": {
+          "token.actions.githubusercontent.com:aud": "sts.amazonaws.com"
+        },
+        "StringLike": {
+          "token.actions.githubusercontent.com:sub": "repo:tmcmanhcuong/synapse-infra:environment:production"
+        }
+      }
+    }
+  ]
+}' \
+--profile cuong-admin
 
 aws iam attach-role-policy \
   --role-name synapse-github-actions-apply \
-  --policy-arn arn:aws:iam::aws:policy/PowerUserAccess
+  --policy-arn arn:aws:iam::aws:policy/PowerUserAccess \
+  --profile cuong-admin
 
 aws iam attach-role-policy \
   --role-name synapse-github-actions-apply \
-  --policy-arn arn:aws:iam::aws:policy/IAMFullAccess
+  --policy-arn arn:aws:iam::aws:policy/IAMFullAccess \
+  --profile cuong-admin
 ```
 
 ### 4. Create S3 State Bucket
 
 ```bash
 aws s3api create-bucket \
-  --bucket synapse-terraform-state \
-  --region ap-southeast-1 \
-  --create-bucket-configuration LocationConstraint=ap-southeast-1
+  --bucket synapse-terraform-state-945125812908 \
+  --region us-east-1 \
+  --profile cuong-admin
 
 aws s3api put-bucket-versioning \
-  --bucket synapse-terraform-state \
-  --versioning-configuration Status=Enabled
+  --bucket synapse-terraform-state-945125812908 \
+  --versioning-configuration Status=Enabled \
+  --profile cuong-admin
 
 aws s3api put-bucket-encryption \
-  --bucket synapse-terraform-state \
+  --bucket synapse-terraform-state-945125812908 \
   --server-side-encryption-configuration '{
     "Rules": [{"ApplyServerSideEncryptionByDefault": {"SSEAlgorithm": "aws:kms"}}]
-  }'
+  }' \
+  --profile cuong-admin
 
 aws s3api put-public-access-block \
-  --bucket synapse-terraform-state \
+  --bucket synapse-terraform-state-945125812908 \
   --public-access-block-configuration '{
     "BlockPublicAcls": true,
     "IgnorePublicAcls": true,
     "BlockPublicPolicy": true,
     "RestrictPublicBuckets": true
-  }'
+  }' \
+  --profile cuong-admin
 ```
 
 ### 5. Get Role ARNs
