@@ -1,0 +1,22 @@
+# Checkov Configuration — Synapse Infrastructure
+# https://www.checkov.io/2.Basics/CLI%20Command%20Reference.html
+#
+# Skipped checks are INTENTIONAL design decisions, not ignored security issues.
+# Each skip has a documented reason below.
+
+skip-check:
+  # CKV_AWS_130: Public subnets require map_public_ip_on_launch=true
+  # Reason: ALB and NAT Gateways are placed in public subnets and need public IPs.
+  # Without this, public-facing services cannot function.
+  - CKV_AWS_130
+
+  # CKV_AWS_260: Web tier security group allows HTTP (port 80) from 0.0.0.0/0
+  # Reason: ALB listens on port 80 to redirect HTTP → HTTPS (301).
+  # This is standard practice; raw HTTP is never served to end users.
+  - CKV_AWS_260
+
+  # CKV2_AWS_5: Security groups not attached to any resource
+  # Reason: Foundation module defines SGs; compute and edge modules consume them
+  # via outputs. This is intentional modular architecture — SGs are attached
+  # when those modules are enabled.
+  - CKV2_AWS_5

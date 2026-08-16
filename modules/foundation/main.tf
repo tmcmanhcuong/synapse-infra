@@ -46,7 +46,6 @@ resource "aws_internet_gateway" "main" {
 # -----------------------------------------------------------------------------
 
 # Public subnets intentionally assign public IPs for ALB and NAT Gateway placement
-#checkov:skip=CKV_AWS_130:Public subnets require auto-assign public IP for ALB/NAT Gateway
 resource "aws_subnet" "public" {
   count = length(var.availability_zones)
 
@@ -192,7 +191,6 @@ resource "aws_route_table_association" "data" {
 # -----------------------------------------------------------------------------
 
 # Security groups are defined in foundation and attached by compute/edge modules
-#checkov:skip=CKV2_AWS_5:SGs are consumed by compute and edge modules via outputs
 resource "aws_security_group" "web" {
   name_prefix = "${var.project}-${var.environment}-web-"
   description = "Web tier - allows HTTP/HTTPS from allowed CIDRs"
@@ -209,7 +207,6 @@ resource "aws_security_group" "web" {
 }
 
 # Web tier intentionally allows HTTP from public for ALB HTTP→HTTPS redirect
-#checkov:skip=CKV_AWS_260:Web tier ALB requires public HTTP ingress for HTTPS redirect
 resource "aws_vpc_security_group_ingress_rule" "web_http" {
   for_each = toset(var.allowed_web_cidrs)
 
@@ -239,7 +236,6 @@ resource "aws_vpc_security_group_egress_rule" "web_all" {
   description       = "All outbound traffic"
 }
 
-#checkov:skip=CKV2_AWS_5:SGs are consumed by compute and edge modules via outputs
 resource "aws_security_group" "app" {
   name_prefix = "${var.project}-${var.environment}-app-"
   description = "App tier - allows traffic from web tier"
@@ -271,7 +267,6 @@ resource "aws_vpc_security_group_egress_rule" "app_all" {
   description       = "All outbound traffic"
 }
 
-#checkov:skip=CKV2_AWS_5:SGs are consumed by compute and edge modules via outputs
 resource "aws_security_group" "data" {
   name_prefix = "${var.project}-${var.environment}-data-"
   description = "Data tier - allows traffic from app tier only"

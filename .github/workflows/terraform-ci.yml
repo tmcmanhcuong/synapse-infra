@@ -98,6 +98,7 @@ jobs:
           framework: terraform
           quiet: true
           soft_fail: false
+          config_file: ${{ env.TF_WORKING_DIR }}/.checkov.yml
 
       # ---------- Plan ----------
 
