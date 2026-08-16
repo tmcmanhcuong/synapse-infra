@@ -1,0 +1,75 @@
+name: Terraform Apply
+
+on:
+  workflow_dispatch:
+    inputs:
+      pull_request_number:
+        description: Pull request number containing the reviewed plan artifact
+        required: true
+      environment:
+        description: GitHub Environment to deploy
+        required: true
+        default: production
+
+permissions:
+  id-token: write
+  contents: read
+  actions: read
+
+concurrency:
+  group: terraform-apply-${{ inputs.environment }}
+  cancel-in-progress: false
+
+jobs:
+  apply:
+    name: Apply
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    env:
+      TF_VERSION: "1.9.8"
+      TF_IN_AUTOMATION: "true"
+      TF_INPUT: "false"
+      TF_WORKING_DIR: environments/prod
+      AWS_REGION: ${{ secrets.AWS_REGION }}
+      TF_STATE_BUCKET: ${{ secrets.TF_STATE_BUCKET }}
+      TF_BACKEND_REGION: ${{ secrets.TF_BACKEND_REGION || secrets.AWS_REGION }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_TERRAFORM_APPLY_ROLE_ARN }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Setup Terraform
+        uses: ./.github/actions/setup-terraform-cached
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+          terraform_wrapper: "false"
+
+      - name: Download reviewed plan artifact
+        uses: dawidd6/action-download-artifact@v6
+        with:
+          workflow: terraform-ci.yml
+          pr: ${{ inputs.pull_request_number }}
+          name: terraform-plan-${{ inputs.pull_request_number }}
+          path: ${{ env.TF_WORKING_DIR }}
+
+      - name: Verify checksum
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        run: sha256sum -c tfplan.sha256
+
+      - name: Terraform init
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        shell: bash
+        run: |
+          args=(-lock-timeout=5m)
+          [ -n "$TF_STATE_BUCKET" ] && args+=("-backend-config=bucket=$TF_STATE_BUCKET")
+          [ -n "$TF_BACKEND_REGION" ] && args+=("-backend-config=region=$TF_BACKEND_REGION")
+          terraform init "${args[@]}"
+
+      - name: Terraform apply reviewed plan
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        run: terraform apply -lock-timeout=5m tfplan
