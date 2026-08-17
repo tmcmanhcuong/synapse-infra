@@ -61,7 +61,7 @@ variable "alb_target_group_api_arn" {
 }
 
 variable "ecs_api_desired_count" {
-  description = "Desired number of API tasks. Set 0 for initial deploy before image exists in ECR."
+  description = "Desired number of API tasks."
   type        = number
-  default     = 0
+  default     = 1
 }
