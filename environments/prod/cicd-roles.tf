@@ -30,7 +30,7 @@ resource "aws_iam_role" "synapse_ce_build" {
         Action = "sts:AssumeRoleWithWebIdentity"
         Condition = {
           StringLike = {
-            "token.actions.githubusercontent.com:sub" = "repo:tmcmanhcuong/synapse-ce:*"
+            "token.actions.githubusercontent.com:sub" = "repo:tmcmanhcuong@101078914/synapse-ce@1334183147:*"
           }
           StringEquals = {
             "token.actions.githubusercontent.com:aud" = "sts.amazonaws.com"
@@ -99,7 +99,7 @@ resource "aws_iam_role" "synapse_ce_deploy" {
         Action = "sts:AssumeRoleWithWebIdentity"
         Condition = {
           StringLike = {
-            "token.actions.githubusercontent.com:sub" = "repo:tmcmanhcuong/synapse-ce:*"
+            "token.actions.githubusercontent.com:sub" = "repo:tmcmanhcuong@101078914/synapse-ce@1334183147:*"
           }
           StringEquals = {
             "token.actions.githubusercontent.com:aud" = "sts.amazonaws.com"
