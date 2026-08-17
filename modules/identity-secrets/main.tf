@@ -138,6 +138,37 @@ data "aws_iam_policy_document" "kms_key_policy" {
       values   = ["arn:aws:logs:ap-southeast-1:${local.account_id}:log-group:*"]
     }
   }
+
+  # Allow Auto Scaling service-linked role to use the key for EBS encryption
+  statement {
+    sid    = "AllowAutoScalingEBS"
+    effect = "Allow"
+
+    principals {
+      type = "AWS"
+      identifiers = [
+        "arn:aws:iam::${local.account_id}:role/aws-service-role/autoscaling.amazonaws.com/AWSServiceRoleForAutoScaling"
+      ]
+    }
+
+    actions = [
+      "kms:CreateGrant",
+      "kms:Decrypt",
+      "kms:DescribeKey",
+      "kms:Encrypt",
+      "kms:GenerateDataKey*",
+      "kms:ReEncryptFrom",
+      "kms:ReEncryptTo",
+    ]
+
+    resources = ["*"]
+
+    condition {
+      test     = "StringEquals"
+      variable = "kms:ViaService"
+      values   = ["ec2.${local.region}.amazonaws.com"]
+    }
+  }
 }
 
 resource "aws_kms_key" "platform" {
