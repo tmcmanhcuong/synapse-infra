@@ -27,3 +27,6 @@ data_subnet_cidrs = [
 # Security
 allowed_web_cidrs = ["0.0.0.0/0"]
 app_port          = 8080
+
+# Observability
+alert_email = "tmcmanhcuong@gmail.com"

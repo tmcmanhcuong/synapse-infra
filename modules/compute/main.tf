@@ -430,9 +430,9 @@ resource "aws_ecs_service" "api" {
   name            = "synapse-api-${var.environment}"
   cluster         = aws_ecs_cluster.this.id
   task_definition = aws_ecs_task_definition.api.arn
-  desired_count   = 1
+  desired_count   = var.ecs_api_desired_count
 
-  deployment_minimum_healthy_percent = 0
+  deployment_minimum_healthy_percent = 100
   deployment_maximum_percent         = 200
 
   capacity_provider_strategy {
@@ -444,6 +444,16 @@ resource "aws_ecs_service" "api" {
   ordered_placement_strategy {
     type  = "spread"
     field = "attribute:ecs.availability-zone"
+  }
+
+  # Attach to ALB target group when provided
+  dynamic "load_balancer" {
+    for_each = var.alb_target_group_api_arn != "" ? [1] : []
+    content {
+      target_group_arn = var.alb_target_group_api_arn
+      container_name   = "synapse-api"
+      container_port   = 8080
+    }
   }
 
   tags = {
