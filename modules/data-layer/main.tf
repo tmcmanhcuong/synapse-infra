@@ -33,6 +33,11 @@ resource "aws_db_parameter_group" "synapse" {
     value = "pg_stat_statements"
   }
 
+  parameter {
+    name  = "rds.force_ssl"
+    value = "1"
+  }
+
   tags = {
     Name        = "synapse-pg17-${var.environment}"
     Project     = var.project
@@ -113,6 +118,7 @@ resource "aws_db_instance" "synapse" {
   maintenance_window      = "Sun:04:00-Sun:05:00"
 
   # Snapshot and deletion protection
+  copy_tags_to_snapshot     = true
   skip_final_snapshot       = false
   final_snapshot_identifier = "synapse-db-final-${var.environment}"
   deletion_protection       = true
@@ -120,6 +126,12 @@ resource "aws_db_instance" "synapse" {
   # Performance Insights
   performance_insights_enabled    = true
   performance_insights_kms_key_id = var.kms_key_arn
+
+  # Auto minor version upgrade
+  auto_minor_version_upgrade = true
+
+  # CloudWatch Logs exports
+  enabled_cloudwatch_logs_exports = ["postgresql", "upgrade"]
 
   # Enhanced Monitoring
   monitoring_interval = 60

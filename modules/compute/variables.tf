@@ -53,3 +53,15 @@ variable "mcp_task_role_arn" {
   description = "IAM role ARN for synapse-mcp task"
   type        = string
 }
+
+variable "alb_target_group_api_arn" {
+  description = "ALB target group ARN for API service. Empty string = no load balancer attached."
+  type        = string
+  default     = ""
+}
+
+variable "ecs_api_desired_count" {
+  description = "Desired number of API tasks. Set 0 for initial deploy before image exists in ECR."
+  type        = number
+  default     = 0
+}
