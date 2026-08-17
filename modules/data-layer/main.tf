@@ -33,6 +33,11 @@ resource "aws_db_parameter_group" "synapse" {
     value = "pg_stat_statements"
   }
 
+  parameter {
+    name  = "rds.force_ssl"
+    value = "1"
+  }
+
   tags = {
     Name        = "synapse-pg17-${var.environment}"
     Project     = var.project
@@ -113,6 +118,7 @@ resource "aws_db_instance" "synapse" {
   maintenance_window      = "Sun:04:00-Sun:05:00"
 
   # Snapshot and deletion protection
+  copy_tags_to_snapshot     = true
   skip_final_snapshot       = false
   final_snapshot_identifier = "synapse-db-final-${var.environment}"
   deletion_protection       = true
