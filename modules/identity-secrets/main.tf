@@ -110,6 +110,34 @@ data "aws_iam_policy_document" "kms_key_policy" {
       values   = [local.account_id]
     }
   }
+
+  # Allow CloudWatch Logs to use the key
+  statement {
+    sid    = "AllowCloudWatchLogsUse"
+    effect = "Allow"
+
+    principals {
+      type        = "Service"
+      identifiers = ["logs.ap-southeast-1.amazonaws.com"]
+    }
+
+    actions = [
+      "kms:Decrypt",
+      "kms:DescribeKey",
+      "kms:Encrypt",
+      "kms:GenerateDataKey*",
+      "kms:ReEncryptFrom",
+      "kms:ReEncryptTo",
+    ]
+
+    resources = ["*"]
+
+    condition {
+      test     = "ArnLike"
+      variable = "kms:EncryptionContext:aws:logs:arn"
+      values   = ["arn:aws:logs:ap-southeast-1:${local.account_id}:log-group:*"]
+    }
+  }
 }
 
 resource "aws_kms_key" "platform" {
@@ -140,14 +168,8 @@ resource "aws_secretsmanager_secret" "this" {
   tags = local.default_tags
 }
 
-# Auto-rotation for db-master-password (30 days)
-resource "aws_secretsmanager_secret_rotation" "db_password" {
-  secret_id = aws_secretsmanager_secret.this["db_master_password"].id
-
-  rotation_rules {
-    automatically_after_days = 30
-  }
-}
+# NOTE: db-master-password rotation is handled by RDS itself via
+# manage_master_user_password = true (data-layer module). No Lambda needed.
 
 # ------------------------------------------------------------------------------
 # IAM: ECS Execution Role

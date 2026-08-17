@@ -29,8 +29,9 @@ resource "aws_db_parameter_group" "synapse" {
   description = "Custom parameter group for Synapse PostgreSQL 17"
 
   parameter {
-    name  = "shared_preload_libraries"
-    value = "pg_stat_statements"
+    name         = "shared_preload_libraries"
+    value        = "pg_stat_statements"
+    apply_method = "pending-reboot"
   }
 
   parameter {
