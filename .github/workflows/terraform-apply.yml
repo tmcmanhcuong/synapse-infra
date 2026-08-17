@@ -1,11 +1,14 @@
 name: Terraform Apply
 
 on:
+  push:
+    branches: [main]
+    paths:
+      - 'modules/**'
+      - 'environments/**'
+      - '.github/workflows/terraform-apply.yml'
   workflow_dispatch:
     inputs:
-      pull_request_number:
-        description: Pull request number containing the reviewed plan artifact
-        required: true
       environment:
         description: GitHub Environment to deploy
         required: true
@@ -17,14 +20,14 @@ permissions:
   actions: read
 
 concurrency:
-  group: terraform-apply-${{ inputs.environment }}
+  group: terraform-apply-production
   cancel-in-progress: false
 
 jobs:
   apply:
     name: Apply
     runs-on: ubuntu-latest
-    environment: ${{ inputs.environment }}
+    environment: production
     env:
       TF_VERSION: "1.9.8"
       TF_IN_AUTOMATION: "true"
@@ -49,18 +52,6 @@ jobs:
           terraform_version: ${{ env.TF_VERSION }}
           terraform_wrapper: "false"
 
-      - name: Download reviewed plan artifact
-        uses: dawidd6/action-download-artifact@v6
-        with:
-          workflow: terraform-ci.yml
-          pr: ${{ inputs.pull_request_number }}
-          name: terraform-plan-${{ inputs.pull_request_number }}
-          path: ${{ env.TF_WORKING_DIR }}
-
-      - name: Verify checksum
-        working-directory: ${{ env.TF_WORKING_DIR }}
-        run: sha256sum -c tfplan.sha256
-
       - name: Terraform init
         working-directory: ${{ env.TF_WORKING_DIR }}
         shell: bash
@@ -70,6 +61,10 @@ jobs:
           [ -n "$TF_BACKEND_REGION" ] && args+=("-backend-config=region=$TF_BACKEND_REGION")
           terraform init "${args[@]}"
 
-      - name: Terraform apply reviewed plan
+      - name: Terraform plan
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        run: terraform plan -lock-timeout=5m -out=tfplan
+
+      - name: Terraform apply
         working-directory: ${{ env.TF_WORKING_DIR }}
         run: terraform apply -lock-timeout=5m tfplan
