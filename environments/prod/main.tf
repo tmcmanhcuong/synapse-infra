@@ -19,8 +19,8 @@ module "foundation" {
 module "identity_secrets" {
   source = "../../modules/identity-secrets"
 
-  project            = var.project
-  environment        = var.environment
+  project             = var.project
+  environment         = var.environment
   evidence_bucket_arn = "arn:aws:s3:::synapse-evidence-${data.aws_caller_identity.current.account_id}"
 }
 
@@ -38,16 +38,16 @@ module "data_layer" {
 module "compute" {
   source = "../../modules/compute"
 
-  project               = var.project
-  environment           = var.environment
-  aws_region            = var.aws_region
-  app_subnet_ids        = module.foundation.app_subnet_ids
-  security_group_id     = module.foundation.security_group_app_id
-  kms_key_arn           = module.identity_secrets.kms_key_arn
+  project                = var.project
+  environment            = var.environment
+  aws_region             = var.aws_region
+  app_subnet_ids         = module.foundation.app_subnet_ids
+  security_group_id      = module.foundation.security_group_app_id
+  kms_key_arn            = module.identity_secrets.kms_key_arn
   ecs_execution_role_arn = module.identity_secrets.ecs_execution_role_arn
-  api_task_role_arn     = module.identity_secrets.api_task_role_arn
-  worker_task_role_arn  = module.identity_secrets.worker_task_role_arn
-  mcp_task_role_arn     = module.identity_secrets.mcp_task_role_arn
+  api_task_role_arn      = module.identity_secrets.api_task_role_arn
+  worker_task_role_arn   = module.identity_secrets.worker_task_role_arn
+  mcp_task_role_arn      = module.identity_secrets.mcp_task_role_arn
 
   # ALB target group — wired from edge module
   alb_target_group_api_arn = module.edge.alb_target_group_api_arn
@@ -56,12 +56,12 @@ module "compute" {
 module "edge" {
   source = "../../modules/edge"
 
-  project            = var.project
-  environment        = var.environment
-  vpc_id             = module.foundation.vpc_id
-  public_subnet_ids  = module.foundation.public_subnet_ids
+  project               = var.project
+  environment           = var.environment
+  vpc_id                = module.foundation.vpc_id
+  public_subnet_ids     = module.foundation.public_subnet_ids
   ecs_security_group_id = module.foundation.security_group_app_id
-  account_id         = data.aws_caller_identity.current.account_id
+  account_id            = data.aws_caller_identity.current.account_id
 }
 
 module "observability" {
