@@ -155,6 +155,7 @@ jobs:
 
       - name: Post Infracost comment
         if: env.INFRACOST_API_KEY != ''
+        continue-on-error: true # FinOps governance policies are advisory, not blocking
         working-directory: ${{ env.TF_WORKING_DIR }}
         run: |
           infracost comment github \
