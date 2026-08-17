@@ -12,7 +12,8 @@ data "aws_ssm_parameter" "ecs_optimized_ami" {
 
 resource "aws_cloudwatch_log_group" "api" {
   name              = "/ecs/synapse-api"
-  retention_in_days = 30
+  retention_in_days = 365
+  kms_key_id        = var.kms_key_arn
 
   tags = {
     Project     = var.project
@@ -23,7 +24,8 @@ resource "aws_cloudwatch_log_group" "api" {
 
 resource "aws_cloudwatch_log_group" "worker" {
   name              = "/ecs/synapse-worker"
-  retention_in_days = 30
+  retention_in_days = 365
+  kms_key_id        = var.kms_key_arn
 
   tags = {
     Project     = var.project
@@ -34,7 +36,8 @@ resource "aws_cloudwatch_log_group" "worker" {
 
 resource "aws_cloudwatch_log_group" "mcp" {
   name              = "/ecs/synapse-mcp"
-  retention_in_days = 30
+  retention_in_days = 365
+  kms_key_id        = var.kms_key_arn
 
   tags = {
     Project     = var.project
@@ -55,7 +58,7 @@ resource "aws_ecr_repository" "this" {
   for_each = toset(local.ecr_repositories)
 
   name                 = each.key
-  image_tag_mutability = "MUTABLE"
+  image_tag_mutability = "IMMUTABLE"
 
   image_scanning_configuration {
     scan_on_push = true
@@ -189,7 +192,7 @@ resource "aws_launch_template" "ecs" {
   metadata_options {
     http_endpoint               = "enabled"
     http_tokens                 = "required"
-    http_put_response_hop_limit = 2
+    http_put_response_hop_limit = 1
   }
 
   tag_specifications {

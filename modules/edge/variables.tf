@@ -33,3 +33,9 @@ variable "project" {
   type        = string
   default     = "synapse"
 }
+
+variable "alb_access_logs_bucket" {
+  description = "S3 bucket name for ALB access logs. Leave empty to disable access logging."
+  type        = string
+  default     = ""
+}

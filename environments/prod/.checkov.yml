@@ -20,3 +20,23 @@ skip-check:
   # via outputs. This is intentional modular architecture — SGs are attached
   # when those modules are enabled.
   - CKV2_AWS_5
+
+  # CKV_AWS_2: ALB HTTPS listener
+  # Reason: ALB listener uses HTTP - no ACM certificate available (no domain).
+  - CKV_AWS_2
+
+  # CKV_AWS_86: CloudFront access logging
+  # Reason: CloudFront access logging requires dedicated S3 bucket - deferred.
+  - CKV_AWS_86
+
+  # CKV_AWS_68: WAF association
+  # Reason: WAF not in scope for initial deployment.
+  - CKV_AWS_68
+
+  # CKV_AWS_336: ECS container read-only filesystem
+  # Reason: ECS containers need write access for scan workspace directories.
+  - CKV_AWS_336
+
+  # CKV_AWS_161: RDS IAM authentication
+  # Reason: RDS IAM auth not used - synapse uses password auth via Secrets Manager.
+  - CKV_AWS_161

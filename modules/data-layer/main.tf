@@ -121,6 +121,12 @@ resource "aws_db_instance" "synapse" {
   performance_insights_enabled    = true
   performance_insights_kms_key_id = var.kms_key_arn
 
+  # Auto minor version upgrade
+  auto_minor_version_upgrade = true
+
+  # CloudWatch Logs exports
+  enabled_cloudwatch_logs_exports = ["postgresql", "upgrade"]
+
   # Enhanced Monitoring
   monitoring_interval = 60
   monitoring_role_arn = aws_iam_role.rds_monitoring.arn

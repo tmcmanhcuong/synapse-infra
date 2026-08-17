@@ -125,17 +125,31 @@ resource "aws_iam_role_policy" "synapse_ce_deploy_ecs" {
     Version = "2012-10-17"
     Statement = [
       {
-        Sid    = "ECSService"
+        Sid    = "ECSTaskDefinition"
         Effect = "Allow"
         Action = [
           "ecs:RegisterTaskDefinition",
           "ecs:DescribeTaskDefinition",
+        ]
+        Resource = "*"
+      },
+      {
+        Sid    = "ECSServiceOps"
+        Effect = "Allow"
+        Action = [
           "ecs:DescribeServices",
           "ecs:UpdateService",
+        ]
+        Resource = "arn:aws:ecs:ap-southeast-1:${data.aws_caller_identity.current.account_id}:service/synapse-*"
+      },
+      {
+        Sid    = "ECSTaskOps"
+        Effect = "Allow"
+        Action = [
           "ecs:ListTasks",
           "ecs:DescribeTasks",
         ]
-        Resource = "*"
+        Resource = "arn:aws:ecs:ap-southeast-1:${data.aws_caller_identity.current.account_id}:*"
       },
       {
         Sid      = "PassRole"

@@ -66,6 +66,18 @@ resource "aws_lb" "main" {
   security_groups    = [aws_security_group.alb.id]
   subnets            = var.public_subnet_ids
 
+  enable_deletion_protection = true
+  drop_invalid_header_fields = true
+
+  dynamic "access_logs" {
+    for_each = var.alb_access_logs_bucket != "" ? [1] : []
+    content {
+      enabled = true
+      bucket  = var.alb_access_logs_bucket
+      prefix  = "alb"
+    }
+  }
+
   tags = merge(local.common_tags, {
     Name = "${local.name_prefix}-alb"
   })
