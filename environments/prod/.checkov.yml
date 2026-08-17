@@ -113,3 +113,27 @@ skip-check:
   # Reason: Event notifications not needed for web bucket or evidence bucket
   # in current architecture.
   - CKV2_AWS_62
+
+  # CKV_AWS_18: S3 access logging
+  # Reason: Access logging requires a dedicated log bucket. Deferred to post-launch.
+  - CKV_AWS_18
+
+  # CKV_AWS_145: S3 KMS encryption
+  # Reason: Web SPA bucket uses SSE-S3 (AES256). KMS adds cost for public static assets.
+  - CKV_AWS_145
+
+  # CKV_AWS_378: ALB target group HTTP protocol
+  # Reason: Backend ECS containers serve on HTTP:8080. TLS terminates at ALB (when cert available).
+  - CKV_AWS_378
+
+  # CKV2_AWS_47: CloudFront WAFv2 for Log4j
+  # Reason: WAF not in scope. Application is Go-based (not Java/Log4j vulnerable).
+  - CKV2_AWS_47
+
+  # CKV2_AWS_28: Public ALB WAF protection
+  # Reason: WAF not in scope for initial deployment.
+  - CKV2_AWS_28
+
+  # CKV2_AWS_61: S3 lifecycle configuration
+  # Reason: Evidence bucket uses Object Lock (no deletion). Web bucket content managed by CI/CD sync.
+  - CKV2_AWS_61
