@@ -321,6 +321,17 @@ resource "aws_ecs_task_definition" "api" {
         }
       ]
 
+      environment = [
+        { name = "SYNAPSE_HTTP_ADDR", value = ":8080" },
+        { name = "SYNAPSE_ENVIRONMENT", value = var.environment },
+        { name = "SYNAPSE_LOG_LEVEL", value = "info" },
+      ]
+
+      secrets = [
+        { name = "SYNAPSE_API_TOKEN", valueFrom = var.secret_api_token_arn },
+        { name = "SYNAPSE_DB_DSN", valueFrom = var.secret_db_dsn_arn },
+      ]
+
       logConfiguration = {
         logDriver = "awslogs"
         options = {

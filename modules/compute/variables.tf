@@ -65,3 +65,13 @@ variable "ecs_api_desired_count" {
   type        = number
   default     = 1
 }
+
+variable "secret_api_token_arn" {
+  description = "ARN of Secrets Manager secret containing SYNAPSE_API_TOKEN"
+  type        = string
+}
+
+variable "secret_db_dsn_arn" {
+  description = "ARN of Secrets Manager secret containing SYNAPSE_DB_DSN (PostgreSQL connection string)"
+  type        = string
+}
