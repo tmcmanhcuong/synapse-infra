@@ -51,6 +51,10 @@ module "compute" {
 
   # ALB target group — wired from edge module
   alb_target_group_api_arn = module.edge.alb_target_group_api_arn
+
+  # Secrets for container environment
+  secret_api_token_arn = module.identity_secrets.secret_arns["api_token"]
+  secret_db_dsn_arn    = module.identity_secrets.secret_arns["db_master_password"]
 }
 
 module "edge" {
