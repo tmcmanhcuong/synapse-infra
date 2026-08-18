@@ -55,6 +55,16 @@ resource "aws_security_group_rule" "alb_egress_to_ecs" {
   description              = "Allow traffic to ECS app on port 8080"
 }
 
+resource "aws_security_group_rule" "ecs_ingress_from_alb" {
+  type                     = "ingress"
+  from_port                = 8080
+  to_port                  = 8080
+  protocol                 = "tcp"
+  source_security_group_id = aws_security_group.alb.id
+  security_group_id        = var.ecs_security_group_id
+  description              = "Allow ALB health checks and traffic to ECS on port 8080"
+}
+
 ################################################################################
 # Application Load Balancer
 ################################################################################
