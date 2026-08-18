@@ -53,8 +53,9 @@ module "compute" {
   alb_target_group_api_arn = module.edge.alb_target_group_api_arn
 
   # Secrets for container environment
-  secret_api_token_arn = module.identity_secrets.secret_arns["api_token"]
-  secret_db_dsn_arn    = module.identity_secrets.secret_arns["db_master_password"]
+  secret_api_token_arn        = module.identity_secrets.secret_arns["api_token"]
+  secret_db_dsn_arn           = module.identity_secrets.secret_arns["db_master_password"]
+  secret_db_migration_dsn_arn = "arn:aws:secretsmanager:ap-southeast-1:${data.aws_caller_identity.current.account_id}:secret:synapse/prod/db-migration-dsn-dBxmnt"
 }
 
 module "edge" {
@@ -81,4 +82,21 @@ module "observability" {
   ecs_service_name        = module.compute.api_service_name
   alb_arn_suffix          = module.edge.alb_arn_suffix
   target_group_arn_suffix = module.edge.target_group_arn_suffix
+}
+
+# Grant ECS execution role access to migration DSN secret (created outside identity-secrets module)
+resource "aws_iam_role_policy" "ecs_exec_migration_secret" {
+  name = "migration-dsn-secret-access"
+  role = regex(".*role/(.*)", module.identity_secrets.ecs_execution_role_arn)[0]
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect   = "Allow"
+        Action   = ["secretsmanager:GetSecretValue"]
+        Resource = "arn:aws:secretsmanager:ap-southeast-1:${data.aws_caller_identity.current.account_id}:secret:synapse/prod/db-migration-dsn-*"
+      }
+    ]
+  })
 }

@@ -75,3 +75,8 @@ variable "secret_db_dsn_arn" {
   description = "ARN of Secrets Manager secret containing SYNAPSE_DB_DSN (PostgreSQL connection string)"
   type        = string
 }
+
+variable "secret_db_migration_dsn_arn" {
+  description = "ARN of Secrets Manager secret containing SYNAPSE_DB_MIGRATION_DSN (admin PostgreSQL connection string for migrations)"
+  type        = string
+}

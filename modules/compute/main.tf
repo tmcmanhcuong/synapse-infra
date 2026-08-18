@@ -330,6 +330,7 @@ resource "aws_ecs_task_definition" "api" {
       secrets = [
         { name = "SYNAPSE_API_TOKEN", valueFrom = var.secret_api_token_arn },
         { name = "SYNAPSE_DB_DSN", valueFrom = var.secret_db_dsn_arn },
+        { name = "SYNAPSE_DB_MIGRATION_DSN", valueFrom = var.secret_db_migration_dsn_arn },
       ]
 
       logConfiguration = {
