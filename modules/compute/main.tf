@@ -300,10 +300,10 @@ resource "aws_ecs_task_definition" "api" {
   network_mode             = "bridge"
   requires_compatibilities = ["EC2"]
   # Full image runs git+syft+grype+JVM during scans — needs more resources.
-  cpu                      = "1024"
-  memory                   = "4096"
-  execution_role_arn       = var.ecs_execution_role_arn
-  task_role_arn            = var.api_task_role_arn
+  cpu                = "1024"
+  memory             = "4096"
+  execution_role_arn = var.ecs_execution_role_arn
+  task_role_arn      = var.api_task_role_arn
 
   container_definitions = jsonencode([
     {
