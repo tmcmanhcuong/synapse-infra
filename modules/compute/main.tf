@@ -327,12 +327,20 @@ resource "aws_ecs_task_definition" "api" {
         { name = "SYNAPSE_ENVIRONMENT", value = var.environment },
         { name = "SYNAPSE_LOG_LEVEL", value = "info" },
         { name = "SYNAPSE_SLA_ENABLED", value = "true" },
+        { name = "SYNAPSE_AGENT_ENABLED", value = "true" },
+        { name = "SYNAPSE_FP_TRIAGE_ENABLED", value = "true" },
+        { name = "SYNAPSE_FP_TRIAGE_MODE", value = "shadow" },
+        { name = "SYNAPSE_LLM_BASE_URL", value = "https://openrouter.ai/api/v1" },
+        { name = "SYNAPSE_LLM_MODEL", value = "google/gemma-4-26b-a4b-it:free" },
+        { name = "SYNAPSE_FP_TRIAGE_MODEL", value = "google/gemma-4-26b-a4b-it:free" },
+        { name = "SYNAPSE_VERIFIER_MODEL", value = "nvidia/nemotron-3.5-lightning:free" },
       ]
 
       secrets = [
         { name = "SYNAPSE_API_TOKEN", valueFrom = var.secret_api_token_arn },
         { name = "SYNAPSE_DB_DSN", valueFrom = var.secret_db_dsn_arn },
         { name = "SYNAPSE_DB_MIGRATION_DSN", valueFrom = var.secret_db_migration_dsn_arn },
+        { name = "SYNAPSE_LLM_API_KEY", valueFrom = var.secret_llm_api_key_arn },
       ]
 
       logConfiguration = {

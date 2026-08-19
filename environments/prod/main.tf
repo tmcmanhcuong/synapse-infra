@@ -56,6 +56,7 @@ module "compute" {
   secret_api_token_arn        = module.identity_secrets.secret_arns["api_token"]
   secret_db_dsn_arn           = module.identity_secrets.secret_arns["db_master_password"]
   secret_db_migration_dsn_arn = "arn:aws:secretsmanager:ap-southeast-1:${data.aws_caller_identity.current.account_id}:secret:synapse/prod/db-migration-dsn-dBxmnt"
+  secret_llm_api_key_arn      = module.identity_secrets.secret_arns["llm_api_key"]
 }
 
 module "edge" {
