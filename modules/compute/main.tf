@@ -326,6 +326,7 @@ resource "aws_ecs_task_definition" "api" {
         { name = "SYNAPSE_HTTP_ADDR", value = ":8080" },
         { name = "SYNAPSE_ENVIRONMENT", value = var.environment },
         { name = "SYNAPSE_LOG_LEVEL", value = "info" },
+        { name = "SYNAPSE_SLA_ENABLED", value = "true" },
       ]
 
       secrets = [
