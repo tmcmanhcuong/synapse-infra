@@ -299,17 +299,18 @@ resource "aws_ecs_task_definition" "api" {
   family                   = "synapse-api-${var.environment}"
   network_mode             = "bridge"
   requires_compatibilities = ["EC2"]
-  cpu                      = "512"
-  memory                   = "2048"
-  execution_role_arn       = var.ecs_execution_role_arn
-  task_role_arn            = var.api_task_role_arn
+  # Full image runs git+syft+grype+JVM during scans — needs more resources.
+  cpu                = "1024"
+  memory             = "4096"
+  execution_role_arn = var.ecs_execution_role_arn
+  task_role_arn      = var.api_task_role_arn
 
   container_definitions = jsonencode([
     {
       name       = "synapse-api"
       image      = "${aws_ecr_repository.this["synapse-api"].repository_url}:latest"
-      cpu        = 512
-      memory     = 2048
+      cpu        = 1024
+      memory     = 4096
       essential  = true
       privileged = false
 
