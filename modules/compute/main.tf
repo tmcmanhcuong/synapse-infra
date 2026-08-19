@@ -447,8 +447,15 @@ resource "aws_ecs_service" "api" {
   task_definition = aws_ecs_task_definition.api.arn
   desired_count   = var.ecs_api_desired_count
 
-  deployment_minimum_healthy_percent = 100
-  deployment_maximum_percent         = 200
+  # Single-instance app uses advisory lock — must stop old task BEFORE starting new.
+  # Accepts brief downtime (~10-30s) during deploys to avoid lock conflict crash loops.
+  deployment_minimum_healthy_percent = 0
+  deployment_maximum_percent         = 100
+
+  deployment_circuit_breaker {
+    enable   = true
+    rollback = true
+  }
 
   capacity_provider_strategy {
     capacity_provider = aws_ecs_capacity_provider.ec2.name
@@ -469,6 +476,11 @@ resource "aws_ecs_service" "api" {
       container_name   = "synapse-api"
       container_port   = 8080
     }
+  }
+
+  # Pipeline manages task_definition via deploy-ecs.yml; ignore drift from manual deploys.
+  lifecycle {
+    ignore_changes = [task_definition]
   }
 
   tags = {
