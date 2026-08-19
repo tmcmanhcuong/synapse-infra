@@ -222,6 +222,30 @@ resource "aws_s3_bucket_policy" "web" {
 }
 
 ################################################################################
+# CloudFront Function — SPA routing
+# Rewrites non-API, non-asset paths to /index.html so React Router handles them.
+################################################################################
+
+resource "aws_cloudfront_function" "spa_rewrite" {
+  name    = "${local.name_prefix}-spa-rewrite"
+  runtime = "cloudfront-js-2.0"
+  publish = true
+  comment = "Rewrite SPA deep-link paths to /index.html; pass API and static assets through."
+
+  code = <<-EOF
+    function handler(event) {
+      var request = event.request;
+      var uri = request.uri;
+      if (uri.startsWith('/api/') || uri.startsWith('/healthz') || uri.includes('.')) {
+        return request;
+      }
+      request.uri = '/index.html';
+      return request;
+    }
+  EOF
+}
+
+################################################################################
 # CloudFront Distribution
 ################################################################################
 
@@ -258,6 +282,11 @@ resource "aws_cloudfront_distribution" "main" {
     cached_methods         = ["GET", "HEAD"]
     target_origin_id       = "s3-spa"
     viewer_protocol_policy = "allow-all"
+
+    function_association {
+      event_type   = "viewer-request"
+      function_arn = aws_cloudfront_function.spa_rewrite.arn
+    }
 
     forwarded_values {
       query_string = false
@@ -318,19 +347,7 @@ resource "aws_cloudfront_distribution" "main" {
   }
 
   # Custom error responses for SPA routing
-  custom_error_response {
-    error_code            = 403
-    response_code         = 200
-    response_page_path    = "/index.html"
-    error_caching_min_ttl = 10
-  }
-
-  custom_error_response {
-    error_code            = 404
-    response_code         = 200
-    response_page_path    = "/index.html"
-    error_caching_min_ttl = 10
-  }
+  # SPA routing handled by CloudFront Function (spa_rewrite) — no custom_error_response needed.
 
   # No geo restrictions
   restrictions {
