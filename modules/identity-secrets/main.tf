@@ -28,6 +28,7 @@ locals {
     api_token             = "${var.project}/${var.environment}/api-token"
     vault_master_key      = "${var.project}/${var.environment}/vault-master-key"
     evidence_signing_seed = "${var.project}/${var.environment}/evidence-signing-seed"
+    llm_api_key           = "${var.project}/${var.environment}/llm-api-key"
   }
 }
 

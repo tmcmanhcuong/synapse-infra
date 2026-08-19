@@ -80,3 +80,9 @@ variable "secret_db_migration_dsn_arn" {
   description = "ARN of Secrets Manager secret containing SYNAPSE_DB_MIGRATION_DSN (admin PostgreSQL connection string for migrations)"
   type        = string
 }
+
+variable "secret_llm_api_key_arn" {
+  description = "ARN of Secrets Manager secret containing the OpenRouter/LLM API key for AI triage"
+  type        = string
+  default     = ""
+}
