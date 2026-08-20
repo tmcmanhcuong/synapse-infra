@@ -329,7 +329,7 @@ resource "aws_ecs_task_definition" "api" {
         { name = "SYNAPSE_SLA_ENABLED", value = "true" },
         { name = "SYNAPSE_AGENT_ENABLED", value = "true" },
         { name = "SYNAPSE_FP_TRIAGE_ENABLED", value = "true" },
-        { name = "SYNAPSE_FP_TRIAGE_MODE", value = "shadow" },
+        { name = "SYNAPSE_FP_TRIAGE_MODE", value = "seal" },
         { name = "SYNAPSE_LLM_BASE_URL", value = "https://openrouter.ai/api/v1" },
         { name = "SYNAPSE_LLM_MODEL", value = "google/gemma-4-26b-a4b-it:free" },
         { name = "SYNAPSE_FP_TRIAGE_MODEL", value = "google/gemma-4-26b-a4b-it:free" },
